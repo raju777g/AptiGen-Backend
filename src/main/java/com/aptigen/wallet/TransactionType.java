@@ -1,0 +1,15 @@
+package com.aptigen.wallet;
+
+public enum TransactionType {
+    SIGNUP_BONUS,
+    PURCHASE,
+    MCQ_GENERATION,
+    TEST_ATTEMPT_PAID,
+    ROYALTY_EARNED,
+    STREAK_BONUS,
+    ACCURACY_CASHBACK,
+    REFERRAL_BONUS,
+    CONTEST_ENTRY,
+    CONTEST_PRIZE,
+    CONTEST_REFUND
+}

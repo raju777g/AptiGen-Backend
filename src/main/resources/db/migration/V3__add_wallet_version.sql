@@ -1,0 +1,1 @@
+   ALTER TABLE coin_wallets ADD COLUMN version BIGINT NOT NULL DEFAULT 0;

@@ -1,0 +1,90 @@
+
+app:
+  from-email: ${MAIL_FROM_EMAIL:${MAIL_USERNAME}}
+  # The deployed backend must return users to the deployed frontend after OAuth.
+  # Override FRONTEND_URL for local development.
+  frontend-url: ${FRONTEND_URL}
+
+razorpay:
+  key-id: ${RAZORPAY_KEY_ID}
+  key-secret: ${RAZORPAY_KEY_SECRET}
+  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
+
+aptigen:
+  admin:
+    emails: ${APTIGEN_ADMIN_EMAILS:${APTIGEN_ADMIN_EMAIL}}
+  royalty-percentage: 0.25   # 25% of coins spent goes to the test creator
+  cashback-percentage: 0.5   # 50% refund on a perfect score
+  notes-generation-coin-cost-per-question: 1
+  contest:
+    default-entry-fee: 5
+
+groq:
+  api-key: ${GROQ_API_KEY}
+  model: openai/gpt-oss-20b
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 5GB
+      file-size-threshold: 2MB
+  datasource:
+    url: ${SQL_URL}
+    username: ${SQL_USERNAME}
+    password: ${SQL_PASSWORD}
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  jpa:
+    hibernate:
+      ddl-auto: validate   # we'll use Flyway for schema, not Hibernate auto-DDL
+    show-sql: true
+  flyway:
+    enabled: true
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: email, profile
+          github:
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            scope: user:email
+
+server:
+  address: 0.0.0.0
+  port: 8080
+  servlet:
+    session:
+      cookie:
+        # Netlify and the backend are different sites in production. Override
+        # with SESSION_COOKIE_SAME_SITE=lax only when running same-origin locally.
+        same-site: ${SESSION_COOKIE_SAME_SITE:none}
+        secure: ${SESSION_COOKIE_SECURE:true}
+  forward-headers-strategy: native
+
+ocr:
+  space:
+    api-key: ${OCR_SPACE_API_KEY}
+
+gemini:
+  vision:
+    api-keys: ${GEMINI_VISION_API_KEYS:${GEMINI_VISION_API_KEY}}
+    api-key: ${GEMINI_VISION_API_KEY:}
+    model: ${GEMINI_VISION_MODEL:gemini-3.5-flash-lite}
+    fallback-model: ${GEMINI_VISION_FALLBACK_MODEL:gemini-3.6-flash}
+    tertiary-model: ${GEMINI_VISION_TERTIARY_MODEL:gemini-3.7-flash}
+    quaternary-model: ${GEMINI_VISION_QUATERNARY_MODEL:gemini-3.8-flash}

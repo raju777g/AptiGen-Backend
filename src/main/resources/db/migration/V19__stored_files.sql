@@ -1,0 +1,7 @@
+CREATE TABLE stored_files (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    file_data LONGBLOB NOT NULL,
+    content_type VARCHAR(100) NOT NULL,
+    original_name VARCHAR(255) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
