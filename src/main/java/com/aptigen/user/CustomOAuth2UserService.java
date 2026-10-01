@@ -58,8 +58,9 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         if (email == null || email.isBlank()) {
             throw oauthEmailError("GitHub did not provide a verified email address. Please grant the user:email permission and try again.");
         }
+        final String resolvedEmail = email;
 
-        User existingUser = userRepository.findByEmail(email).orElse(null);
+        User existingUser = userRepository.findByEmail(resolvedEmail).orElse(null);
         if (existingUser != null && existingUser.isBlocked()) {
             String blockMessage = existingUser.getBlockMessage() == null || existingUser.getBlockMessage().isBlank()
                     ? "This account is blocked." : existingUser.getBlockMessage();
@@ -71,14 +72,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 ? oAuth2User.getAttribute("sub")        // Google's unique id field
                 : String.valueOf(oAuth2User.getAttribute("id")); // GitHub's unique id field
 
-        userRepository.findByEmail(email).ifPresentOrElse(
+        userRepository.findByEmail(resolvedEmail).ifPresentOrElse(
                 existing -> { /* existing user — nothing to create, just let login proceed */ },
                 () -> {
                     String name = oAuth2User.getAttribute("name");
                     User newUser = User.builder()
-                            .name(name != null ? name : email.split("@")[0])
-                            .email(email)
-                            .role(isConfiguredAdmin(email) ? "ADMIN" : "USER")
+                            .name(name != null ? name : resolvedEmail.split("@")[0])
+                            .email(resolvedEmail)
+                            .role(isConfiguredAdmin(resolvedEmail) ? "ADMIN" : "USER")
                             .authProvider(authProvider)
                             .providerId(providerId)
                             .emailVerified(true) // OAuth providers already verified the email themselves
@@ -92,7 +93,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 }
         );
 
-        User authenticatedUser = userRepository.findByEmail(email).orElseThrow();
+        User authenticatedUser = userRepository.findByEmail(resolvedEmail).orElseThrow();
         Set<org.springframework.security.core.GrantedAuthority> authorities = new HashSet<>(oAuth2User.getAuthorities());
         authorities.add(new SimpleGrantedAuthority(authenticatedUser.getRole() == null ? "USER" : authenticatedUser.getRole()));
         String nameAttribute = request.getClientRegistration().getProviderDetails().getUserInfoEndpoint().getUserNameAttributeName();
