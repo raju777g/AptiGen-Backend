@@ -58,7 +58,7 @@ public class SecurityConfig {
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "https://aptigenai.netlify.app",
-                "https://joana-unrevertible-gail.ngrok-free.dev"
+                "https://01a0f743-edb3-77f0-8a1f-771bffe3879d-8080.eur-1.aiven.app"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));

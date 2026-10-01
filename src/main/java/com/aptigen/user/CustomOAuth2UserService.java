@@ -8,10 +8,19 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.web.client.RestTemplate;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,11 +45,18 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String providerName = request.getClientRegistration().getRegistrationId(); // "google" or "github"
 
         String email = oAuth2User.getAttribute("email");
-        if (email == null) {
+        if ((email == null || email.isBlank()) && !providerName.equalsIgnoreCase("github")) {
             // GitHub doesn't always return email in the main attributes if the user's email is private;
             // for a portfolio project we just fail clearly here rather than making an extra API call
             // to GitHub's /user/emails endpoint — worth knowing this is a real limitation.
             throw new OAuth2AuthenticationException("Email not available from " + providerName + ". Please make your email public or use email/password signup.");
+        }
+
+        if ((email == null || email.isBlank()) && providerName.equalsIgnoreCase("github")) {
+            email = loadGithubEmail(request);
+        }
+        if (email == null || email.isBlank()) {
+            throw oauthEmailError("GitHub did not provide a verified email address. Please grant the user:email permission and try again.");
         }
 
         User existingUser = userRepository.findByEmail(email).orElse(null);
@@ -85,5 +101,58 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private boolean isConfiguredAdmin(String email) {
         return java.util.Arrays.stream(adminEmails.split(",")).map(String::trim).anyMatch(configured -> configured.equalsIgnoreCase(email));
+    }
+
+    /** GitHub omits private emails from /user, so read the verified email list with the OAuth token. */
+    private String loadGithubEmail(OAuth2UserRequest request) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(request.getAccessToken().getTokenValue());
+        headers.set("Accept", "application/vnd.github+json");
+        headers.set("X-GitHub-Api-Version", "2022-11-28");
+
+        ResponseEntity<List<Map<String, Object>>> response;
+        try {
+            response = new RestTemplate().exchange(
+                    "https://api.github.com/user/emails",
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    new ParameterizedTypeReference<>() {}
+            );
+        } catch (RuntimeException ex) {
+            throw oauthEmailError("GitHub did not allow AptiGen to read your email address. Please grant the user:email permission and try again.");
+        }
+
+        List<Map<String, Object>> emails = response.getBody();
+        if (emails == null) return null;
+
+        return emails.stream()
+                .filter(this::isVerified)
+                .filter(this::isPrimary)
+                .map(this::emailValue)
+                .filter(value -> value != null && !value.isBlank())
+                .findFirst()
+                .orElseGet(() -> emails.stream()
+                        .filter(this::isVerified)
+                        .map(this::emailValue)
+                        .filter(value -> value != null && !value.isBlank())
+                        .findFirst()
+                        .orElse(null));
+    }
+
+    private boolean isVerified(Map<String, Object> email) {
+        return Boolean.TRUE.equals(email.get("verified"));
+    }
+
+    private boolean isPrimary(Map<String, Object> email) {
+        return Boolean.TRUE.equals(email.get("primary"));
+    }
+
+    private String emailValue(Map<String, Object> email) {
+        Object value = email.get("email");
+        return value == null ? null : value.toString();
+    }
+
+    private OAuth2AuthenticationException oauthEmailError(String message) {
+        return new OAuth2AuthenticationException(new OAuth2Error("email_unavailable"), message);
     }
 }
